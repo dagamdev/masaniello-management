@@ -2,16 +2,15 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useOperationStore } from "@/stores/operation-store"
-import { Header } from "./header"
-import { SessionManager } from "./session-manager"
-import { ConfigPanel } from "./config-panel"
-import { ObjectivePanel } from "./objective-panel"
-import { InfoPanel } from "./info-panel"
-import { ObjectiveInfoPanel } from "./objective-info-panel"
-import { OperationsTable } from "./operations-table"
-import type { Language } from "@/types"
-import { calculateMatris } from "@/lib/masaniello"
+import { useTradingStore } from "@/lib/store"
+import { Header } from "@/components/trading/header"
+import { SessionManager } from "@/components/trading/session-manager"
+import { ConfigPanel } from "@/components/trading/config-panel"
+import { ObjectivePanel } from "@/components/trading/objective-panel"
+import { InfoPanel } from "@/components/trading/info-panel"
+import { ObjectiveInfoPanel } from "@/components/trading/objective-info-panel"
+import { OperationsTable } from "@/components/trading/operations-table"
+import type { Language } from "@/lib/types"
 
 interface SessionPageProps {
   lang: Language
@@ -20,7 +19,7 @@ interface SessionPageProps {
 
 export function SessionPage({ lang, sessionId }: SessionPageProps) {
   const router = useRouter()
-  const { sessions, activeSessionId, setActiveSession, initializeStore } = useOperationStore()
+  const { sessions, activeSessionId, setActiveSession, initializeStore } = useTradingStore()
 
   useEffect(() => {
     initializeStore()
@@ -35,11 +34,6 @@ export function SessionPage({ lang, sessionId }: SessionPageProps) {
         router.replace(`/${lang}/session/${sessions[0].id}`)
       }
     }
-    calculateMatris({
-      ITMs: 4,
-      profitPercent: 86,
-      totalOperations: 10
-    })
   }, [sessionId, sessions, activeSessionId, setActiveSession, lang, router])
 
   const activeSession = sessions.find((s) => s.id === sessionId)

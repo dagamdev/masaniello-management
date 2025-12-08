@@ -1,24 +1,24 @@
 "use client"
 
 import { Card } from "@/components/ui/card"
-import { useOperationStore } from "@/stores/operation-store"
+import { useTradingStore } from "@/lib/store"
 import { translations } from "@/lib/translations"
-import type { Language } from "@/types"
+import type { Language } from "@/lib/types"
 
 interface ObjectiveInfoPanelProps {
   lang: Language
 }
 
 export function ObjectiveInfoPanel({ lang }: ObjectiveInfoPanelProps) {
-  const { getActiveSession } = useOperationStore()
+  const { getActiveSession } = useTradingStore()
   const t = translations[lang]
 
   const session = getActiveSession()
-  const config = session?.config || { totalRisk: 100, operationCount: 10, expectedITMs: 4, brokerPayout: 85 }
+  const config = session?.config || { totalRiesgo: 100, cantidadTrades: 3, itmEsperados: 1, pagaBroker: 85 }
 
-  const winRate = config.operationCount > 0 ? ((config.expectedITMs / config.operationCount) * 100).toFixed(2) : "0.00"
-  const saldoFinalObjetivo = config.totalRisk + config.totalRisk * (config.brokerPayout / 100)
-  const gananciaNeta = config.totalRisk * (config.brokerPayout / 100)
+  const winRate = config.cantidadTrades > 0 ? ((config.itmEsperados / config.cantidadTrades) * 100).toFixed(2) : "0.00"
+  const saldoFinalObjetivo = config.totalRiesgo + config.totalRiesgo * (config.pagaBroker / 100)
+  const gananciaNeta = config.totalRiesgo * (config.pagaBroker / 100)
   const rendimiento = saldoFinalObjetivo > 0 ? ((gananciaNeta / saldoFinalObjetivo) * 100).toFixed(2) : "0.00"
 
   return (
