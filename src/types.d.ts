@@ -1,28 +1,34 @@
 export type Language = "es" | "en"
 
-export type TradeResult = "W" | "L" | null
+export type OperationResult = "W" | "L" | null
 
-export interface Trade {
-  id: number
-  result: TradeResult
-  inversion: number
-  retorno: number
-  saldo: number
-  itmPercent: number
-  fallosPendientes: string
-}
+export type CycleStatus = "active" | "won" | "lost"
+
+// export interface Operation {
+//   id: string
+//   result: OperationResult
+//   investment: number
+//   profit: number
+//   balance: number
+//   itmPercent: number
+//   status: string
+// }
+export type Operation = [string, 0 | 1 | null]
 
 export interface Config {
-  totalRiesgo: number
-  cantidadTrades: number
-  itmEsperados: number
-  pagaBroker: number
+  totalRisk: number
+  operationCount: number
+  expectedITMs: number
+  brokerPayout: number
+  progressiveMode: boolean
+  reinvestmentPercent: number
 }
 
 export interface Session {
   id: string
   name: string
   config: Config
-  trades: Trade[]
+  operations: Array<[string, 0 | 1]>
   createdAt: number
+  cycleStatus: CycleStatus
 }

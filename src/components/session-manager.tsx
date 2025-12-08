@@ -1,22 +1,24 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Modal } from "@/components/ui/modal"
-import { useTradingStore } from "@/stores/store"
+import { useOperationStore } from "@/stores/operation-store"
 import { translations } from "@/lib/translations"
 import type { Language, Session } from "@/types"
 
 interface SessionManagerProps {
   lang: Language
+  sessionId: string
 }
 
-export function SessionManager({ lang }: SessionManagerProps) {
-  const { sessions, activeSessionId, createSession, deleteSession, updateSessionName, setActiveSession } =
-    useTradingStore()
+export function SessionManager({ lang, sessionId }: SessionManagerProps) {
+  const router = useRouter()
+  const { sessions, createSession, deleteSession, updateSessionName, setActiveSession } = useOperationStore()
   const t = translations[lang]
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -35,6 +37,10 @@ export function SessionManager({ lang }: SessionManagerProps) {
   const confirmCreateSession = () => {
     if (!newSessionName.trim()) return
     createSession(newSessionName.trim())
+    const newSession = useOperationStore.getState().sessions.at(-1)
+    if (newSession) {
+      router.push(`/${lang}/session/${newSession.id}`)
+    }
     setShowCreateModal(false)
     setNewSessionName("")
   }
@@ -46,7 +52,14 @@ export function SessionManager({ lang }: SessionManagerProps) {
 
   const confirmDeleteSession = () => {
     if (!sessionToDelete || sessions.length <= 1) return
+    const wasActive = sessionToDelete.id === sessionId
     deleteSession(sessionToDelete.id)
+    if (wasActive) {
+      const remainingSessions = useOperationStore.getState().sessions
+      if (remainingSessions.length > 0) {
+        router.push(`/${lang}/session/${remainingSessions[0].id}`)
+      }
+    }
     setShowDeleteModal(false)
     setSessionToDelete(null)
   }
@@ -63,6 +76,11 @@ export function SessionManager({ lang }: SessionManagerProps) {
     setShowEditModal(false)
     setSessionToEdit(null)
     setEditSessionName("")
+  }
+
+  const handleSelectSession = (id: string) => {
+    setActiveSession(id)
+    router.push(`/${lang}/session/${id}`)
   }
 
   return (
@@ -143,9 +161,9 @@ export function SessionManager({ lang }: SessionManagerProps) {
           {sessions.map((session) => (
             <div
               key={session.id}
-              onClick={() => setActiveSession(session.id)}
+              onClick={() => handleSelectSession(session.id)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors cursor-pointer ${
-                activeSessionId === session.id
+                sessionId === session.id
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-muted/50 hover:bg-muted border-border"
               }`}
@@ -158,9 +176,7 @@ export function SessionManager({ lang }: SessionManagerProps) {
                     openEditModal(session)
                   }}
                   className={`p-1 rounded hover:bg-white/20 transition-colors ${
-                    activeSessionId === session.id
-                      ? "text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                    sessionId === session.id ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                   title={t.edit}
                 >
@@ -173,7 +189,7 @@ export function SessionManager({ lang }: SessionManagerProps) {
                       openDeleteModal(session)
                     }}
                     className={`p-1 rounded hover:bg-destructive/20 transition-colors ${
-                      activeSessionId === session.id ? "text-primary-foreground" : "text-destructive"
+                      sessionId === session.id ? "text-primary-foreground" : "text-destructive"
                     }`}
                     title={t.deleteSession}
                   >

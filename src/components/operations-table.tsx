@@ -2,147 +2,121 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trash2 } from "lucide-react"
-import { useTradingStore } from "@/stores/store"
+import { Trash2, Trophy, XCircle, RefreshCw, Copy } from "lucide-react"
+import { useOperationStore } from "@/stores/operation-store"
 import { translations } from "@/lib/translations"
-import type { Language, Trade } from "@/types"
+import type { Language, Operation } from "@/types"
+import { toast } from "sonner"
+import { useEffect, useRef } from "react"
+import { OperationCard } from "./operation-card"
+import { calculateAmount } from "@/lib/masaniello"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 
 interface OperationsTableProps {
   lang: Language
 }
 
 export function OperationsTable({ lang }: OperationsTableProps) {
-  const { getActiveSession, markTrade, updateTradeResult, deleteTrade } = useTradingStore()
+  const balance = useRef(0)
+  const lastAmount = useRef(0)
+  const value = useRef(0)
+  const { getActiveSession, deleteOperation, restoreOperation, resetCycle } = useOperationStore()
+  const { matris, updateMatris } = useMasanielloStore()
   const t = translations[lang]
 
   const session = getActiveSession()
-  const trades = session?.trades || []
-  const config = session?.config || { totalRiesgo: 100, cantidadTrades: 3, itmEsperados: 1, pagaBroker: 85 }
+  
+  useEffect(() => {
+    if (session) {
+      balance.current = session.config.totalRisk
+    }
+  }, [session])
 
-  const completedTrades = trades.filter((trade) => trade.result !== null)
-  const winningTrades = completedTrades.filter((trade) => trade.result === "W").length
-  const totalCompletedTrades = completedTrades.length
-  const currentITMPercent =
-    totalCompletedTrades > 0 ? ((winningTrades / totalCompletedTrades) * 100).toFixed(2) : "0.00"
-
-  const canDelete = (trade: Trade) => {
-    const isLastTrade = trade.id === trades[trades.length - 1]?.id
-    return trades.length > 1 && (!isLastTrade || trade.result !== null)
+  const operations = session?.operations || []
+  const config = session?.config || {
+    totalRisk: 100,
+    operationCount: 10,
+    expectedITMs: 4,
+    brokerPayout: 85,
+    progressiveMode: false,
+    reinvestmentPercent: 50
   }
 
-  const getFallosPendientes = (trade: Trade) => {
-    if (trade.result === null) return t.markWL
-    if (trade.result === "W") return t.hasWon
-    const maxLosses = config.cantidadTrades - config.itmEsperados
-    return `${t.remaining} ${maxLosses} OTM`
-  }
+  updateMatris(config.operationCount, config.expectedITMs, config.brokerPayout)
+  const cycleStatus = session?.cycleStatus || "active"
+
+  const completedOperations = operations.filter((operation) => operation.at(1) !== null)
+  const winningOperations = completedOperations.filter((operation) => operation[1] === 1).length
+  const totalCompletedOperations = completedOperations.length
+  const currentITMPercent = totalCompletedOperations > 0 ? ((winningOperations / totalCompletedOperations) * 100).toFixed(2) : "0.00"
+
 
   return (
     <Card className="overflow-hidden py-0">
       <div className="bg-primary text-primary-foreground px-4 py-2 flex justify-between items-center">
-        <h2 className="font-bold text-xl">{t.operations}</h2>
-        <div className="text-base font-mono font-bold">
-          ITM: <span className="text-success">{currentITMPercent}%</span>
-        </div>
+        <h2 className="font-bold text-base sm:text-lg">{t.operations}</h2>
+        <span className="text-sm sm:text-base font-mono">
+          ITM: <span className="text-success font-bold">{currentITMPercent}%</span>
+        </span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="p-3 text-left font-semibold">{t.number}</th>
-              <th className="p-3 text-left font-semibold">W - L</th>
-              <th className="p-3 text-right font-semibold">{t.investment}</th>
-              <th className="p-3 text-right font-semibold">{t.return}</th>
-              <th className="p-3 text-right font-semibold">{t.balance}</th>
-              <th className="p-3 text-right font-semibold">% ITM</th>
-              <th className="p-3 text-left font-semibold">{t.pendingFailures}</th>
-              <th className="p-3 text-center font-semibold">{t.actions}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {trades.map((trade) => (
-              <tr key={trade.id} className="border-b hover:bg-muted/30 transition-colors">
-                <td className="p-3 font-medium">{trade.id}</td>
-                <td className="p-3">
-                  {trade.result === null ? (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => markTrade(trade.id, "W")}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded font-bold bg-success/20 hover:bg-success text-success-foreground border-2 border-success transition-colors cursor-pointer"
-                        title={t.markAsWin}
-                      >
-                        W
-                      </button>
-                      <button
-                        onClick={() => markTrade(trade.id, "L")}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded font-bold bg-destructive/20 hover:bg-destructive text-destructive-foreground border-2 border-destructive transition-colors cursor-pointer"
-                        title={t.markAsLoss}
-                      >
-                        L
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => updateTradeResult(trade.id, "W")}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded font-bold border-2 transition-colors cursor-pointer ${
-                          trade.result === "W"
-                            ? "bg-success text-success-foreground border-success"
-                            : "bg-success/20 hover:bg-success text-success-foreground border-success"
-                        }`}
-                        title={t.markAsWin}
-                      >
-                        W
-                      </button>
-                      <button
-                        onClick={() => updateTradeResult(trade.id, "L")}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded font-bold border-2 transition-colors cursor-pointer ${
-                          trade.result === "L"
-                            ? "bg-destructive text-destructive-foreground border-destructive"
-                            : "bg-destructive/20 hover:bg-destructive text-destructive-foreground border-destructive"
-                        }`}
-                        title={t.markAsLoss}
-                      >
-                        L
-                      </button>
-                    </div>
-                  )}
-                </td>
-                <td className="p-3 text-right font-mono">€ {trade.inversion.toFixed(2)}</td>
-                <td
-                  className={`p-3 text-right font-mono ${trade.result === null ? "" : trade.retorno >= 0 ? "text-success" : "text-destructive"}`}
-                >
-                  {trade.result === null ? "-" : `€ ${trade.retorno.toFixed(2)}`}
-                </td>
-                <td className="p-3 text-right font-mono font-semibold">
-                  {trade.result === null ? "-" : `€ ${trade.saldo.toFixed(2)}`}
-                </td>
-                <td className="p-3 text-right font-mono">
-                  {trade.result === null ? "-" : `${trade.itmPercent.toFixed(2)}%`}
-                </td>
-                <td className="p-3 text-muted-foreground">{getFallosPendientes(trade)}</td>
-                <td className="p-3 text-center">
-                  <Button
-                    onClick={() => deleteTrade(trade.id)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    disabled={!canDelete(trade)}
-                    title={
-                      trades.length <= 1
-                        ? t.cannotDeleteLast
-                        : !canDelete(trade)
-                          ? t.cannotDeleteUnmarked
-                          : t.deleteOperation
-                    }
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      {/* Notificación de ciclo */}
+      {cycleStatus !== "active" && (
+        <div
+          className={`px-4 py-3 flex items-center justify-between gap-2 ${cycleStatus === "won" ? "bg-success/20" : "bg-destructive/20"}`}
+        >
+          <div className="flex items-center gap-2">
+            {cycleStatus === "won" ? (
+              <Trophy className="h-5 w-5 text-success shrink-0" />
+            ) : (
+              <XCircle className="h-5 w-5 text-destructive shrink-0" />
+            )}
+            <div>
+              <p className={`text-sm font-medium ${cycleStatus === "won" ? "text-success" : "text-destructive"}`}>
+                {cycleStatus === "won" ? t.cycleWon : t.cycleLost}
+              </p>
+            </div>
+          </div>
+          <Button onClick={resetCycle} size="sm" className="h-8 text-sm gap-1.5 shrink-0">
+            <RefreshCw className="h-4 w-4" />
+            {t.newCycle}
+          </Button>
+        </div>
+      )}
+
+      {/* Lista de operaciones */}
+      <div>
+        {operations.map((operation, opi, arr) => {
+          const profit = config.brokerPayout / 100 + 1
+
+          if (opi === 0) {
+            lastAmount.current = calculateAmount(0, 0, matris, profit, balance.current, config.expectedITMs)
+            value.current = lastAmount.current
+          }
+
+          const winnins = operations.filter((o, i) => i <= opi && o[1] === 1).length
+          const losses = operations.filter((o, i) => i <= opi && o[1] !== 1).length
+      
+          if (operation[1] === 1) balance.current += lastAmount.current * (profit - 1)
+          else balance.current -= lastAmount.current
+          
+          // Ganado
+          if (winnins === config.expectedITMs) {
+            return <OperationCard operation={operation} index={opi + 1} lang={lang} amount={0} balance={balance.current}/>
+          }
+      
+          // Perdido
+          if (losses >= config.operationCount - config.expectedITMs + 1) {
+            balance.current -= lastAmount.current
+            return <OperationCard operation={operation} index={opi + 1} lang={lang} amount={0} balance={balance.current}/>
+          }
+          if (opi + 1 === config.operationCount) {
+            return <OperationCard operation={operation} index={opi + 1} lang={lang} amount={balance.current} balance={balance.current}/>
+          }
+      
+          value.current = calculateAmount(winnins, losses, matris, profit, balance.current, config.expectedITMs, opi + 2 === config.operationCount)
+          return <OperationCard operation={operation} index={opi + 1} lang={lang} amount={value.current} balance={balance.current}/>
+        })}
       </div>
     </Card>
   )

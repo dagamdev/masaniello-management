@@ -1,15 +1,12 @@
-import { TradingTracker } from "@/components/trading-tracker"
-import type { Language } from "@/lib/translations"
+import { redirect } from "next/navigation"
+import type { Language } from "@/types"
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
   const validLang: Language = lang === "en" ? "en" : "es"
 
-  return (
-    <main className="min-h-screen p-4 md:p-8">
-      <TradingTracker lang={validLang} />
-    </main>
-  )
+  // Redirect to session page - will be handled client-side
+  redirect(`/${validLang}/session`)
 }
 
 export function generateStaticParams() {
