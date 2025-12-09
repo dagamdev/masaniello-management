@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation"
 import { useOperationStore } from "@/stores/operation-store"
 import type { Language } from "@/types"
 
+console.log('session')
+
 export default function SessionRedirect() {
   const params = useParams()
   const lang = params.lang as string
@@ -25,7 +27,7 @@ export default function SessionRedirect() {
   }, [sessions, activeSessionId, validLang, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center c">
       <div className="animate-pulse text-muted-foreground">Loading...</div>
     </div>
   )

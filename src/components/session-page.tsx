@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useTradingStore } from "@/lib/store"
+import { useOperationStore } from "@/lib/store"
 import { Header } from "@/components/trading/header"
 import { SessionManager } from "@/components/trading/session-manager"
 import { ConfigPanel } from "@/components/trading/config-panel"
@@ -10,7 +10,7 @@ import { ObjectivePanel } from "@/components/trading/objective-panel"
 import { InfoPanel } from "@/components/trading/info-panel"
 import { ObjectiveInfoPanel } from "@/components/trading/objective-info-panel"
 import { OperationsTable } from "@/components/trading/operations-table"
-import type { Language } from "@/lib/types"
+import type { Language } from "@/types"
 
 interface SessionPageProps {
   lang: Language
@@ -19,7 +19,7 @@ interface SessionPageProps {
 
 export function SessionPage({ lang, sessionId }: SessionPageProps) {
   const router = useRouter()
-  const { sessions, activeSessionId, setActiveSession, initializeStore } = useTradingStore()
+  const { sessions, activeSessionId, setActiveSession, initializeStore } = useOperationStore()
 
   useEffect(() => {
     initializeStore()

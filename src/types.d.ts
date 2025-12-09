@@ -4,21 +4,22 @@ export type TradeResult = "W" | "L" | null
 
 export type CycleStatus = "active" | "won" | "lost"
 
-export interface Trade {
-  id: number
+export interface Operation {
+  id: string
+  index: number
   result: TradeResult
-  inversion: number
-  retorno: number
-  saldo: number
-  itmPercent: number
-  fallosPendientes: string
+  amount: number
+  profit: number
+  balance: number
+  winRate: number
+  status: string
 }
 
 export interface Config {
-  totalRiesgo: number
-  cantidadTrades: number
-  itmEsperados: number
-  pagaBroker: number
+  totalRisk: number
+  allOperations: number
+  expectedITMs: number
+  brokerPayour: number
   progressiveMode: boolean
   reinvestmentPercent: number
 }
@@ -27,7 +28,7 @@ export interface Session {
   id: string
   name: string
   config: Config
-  trades: Trade[]
+  operations: Operation[]
   createdAt: number
   cycleStatus: CycleStatus
 }

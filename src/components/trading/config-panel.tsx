@@ -3,25 +3,25 @@
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { useTradingStore } from "@/lib/store"
+import { useOperationStore } from "@/lib/store"
 import { translations } from "@/lib/translations"
-import type { Language } from "@/lib/types"
+import type { Config, Language } from "@/types"
 
 interface ConfigPanelProps {
   lang: Language
 }
 
 export function ConfigPanel({ lang }: ConfigPanelProps) {
-  const { getActiveSession, updateConfig } = useTradingStore()
+  const { getActiveSession, updateConfig } = useOperationStore()
   const t = translations[lang]
 
   const session = getActiveSession()
 
-  const config = {
-    totalRiesgo: session?.config?.totalRiesgo ?? 100,
-    cantidadTrades: session?.config?.cantidadTrades ?? 3,
-    itmEsperados: session?.config?.itmEsperados ?? 1,
-    pagaBroker: session?.config?.pagaBroker ?? 85,
+  const config: Config = {
+    totalRisk: session?.config?.totalRisk ?? 100,
+    allOperations: session?.config?.allOperations ?? 10,
+    expectedITMs: session?.config?.expectedITMs ?? 4,
+    brokerPayour: session?.config?.brokerPayour ?? 85,
     progressiveMode: session?.config?.progressiveMode ?? false,
     reinvestmentPercent: session?.config?.reinvestmentPercent ?? 50,
   }
@@ -36,8 +36,8 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
           <label className="font-medium text-muted-foreground block text-[10px] sm:text-xs">{t.totalRisk}</label>
           <Input
             type="number"
-            value={config.totalRiesgo}
-            onChange={(e) => updateConfig({ ...config, totalRiesgo: Number(e.target.value) })}
+            value={config.totalRisk}
+            onChange={(e) => updateConfig({ ...config, totalRisk: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
           />
         </div>
@@ -45,8 +45,8 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
           <label className="font-medium text-muted-foreground block text-[10px] sm:text-xs">{t.tradeCount}</label>
           <Input
             type="number"
-            value={config.cantidadTrades}
-            onChange={(e) => updateConfig({ ...config, cantidadTrades: Number(e.target.value) })}
+            value={config.allOperations}
+            onChange={(e) => updateConfig({ ...config, allOperations: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
           />
         </div>
@@ -55,8 +55,8 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
           <Input
             type="number"
             step="1"
-            value={config.pagaBroker}
-            onChange={(e) => updateConfig({ ...config, pagaBroker: Number(e.target.value) })}
+            value={config.brokerPayour}
+            onChange={(e) => updateConfig({ ...config, brokerPayour: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
           />
         </div>
@@ -64,8 +64,8 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
           <label className="font-medium text-muted-foreground block text-[10px] sm:text-xs">{t.expectedITM}</label>
           <Input
             type="number"
-            value={config.itmEsperados}
-            onChange={(e) => updateConfig({ ...config, itmEsperados: Number(e.target.value) })}
+            value={config.expectedITMs}
+            onChange={(e) => updateConfig({ ...config, expectedITMs: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
           />
         </div>
