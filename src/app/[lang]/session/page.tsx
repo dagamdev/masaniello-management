@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { useOperationStore } from "@/stores/operation-store"
+import { useOperationStore } from "@/lib/store"
 import type { Language } from "@/types"
 
 console.log('session')

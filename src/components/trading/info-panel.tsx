@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { translations } from "@/lib/translations"
-import type { Language } from "@/lib/types"
+import type { Language } from "@/types"
 
 interface InfoPanelProps {
   lang: Language
