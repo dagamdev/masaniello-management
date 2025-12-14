@@ -1,34 +1,29 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { Session, Config, Operation, CycleStatus } from "@/types"
+import { DEFAULT_CONFIG } from "@/utils/constants"
+import { calculateAmount, calculateMatris, getOperationStatus, getUpdatedOperations } from "./masaniello"
 
-const defaultConfig: Config = {
-  totalRisk: 100,
-  allOperations: 10,
-  expectedITMs: 4,
-  brokerPayour: 85,
-  progressiveMode: false,
-  reinvestmentPercent: 50
+const createDefaultOperation = (config: Config, matrix: number[][]): Operation => {
+  return {
+    id: crypto.randomUUID(),
+    result: null,
+    amount: calculateAmount(0, 0, matrix, config.brokerPayout / 100 + 1, config.totalRisk, config.expectedITMs),
+    profit: 0,
+    balance: config.totalRisk,
+    winRate: 0,
+    status: 'Seleciona el resultado.',
+  }
 }
 
-const createDefaultOperation = (config: Config): Operation => ({
-  id: crypto.randomUUID(),
-  index: 1,
-  result: null,
-  amount: config.totalRisk * 0.1,
-  profit: 0,
-  balance: config.totalRisk,
-  winRate: 0,
-  status: "",
-})
+const createNewSession = (name: string, matrix: number[][]): Session => {
+  const config = { ...DEFAULT_CONFIG }
 
-const createNewSession = (name: string): Session => {
-  const config = { ...defaultConfig }
   return {
     id: crypto.randomUUID(),
     name,
     config,
-    operations: [createDefaultOperation(config)],
+    operations: [createDefaultOperation(config, matrix)],
     createdAt: Date.now(),
     cycleStatus: "active",
   }
@@ -37,7 +32,8 @@ const createNewSession = (name: string): Session => {
 interface OperationStore {
   sessions: Session[]
   activeSessionId: string | null
-  deletedOperation: { operation: Operation; index: number } | null
+  deletedOperation?: { operation: Operation; index: number }
+  matrix: number[][]
 
   // Session actions
   createSession: (name: string) => void
@@ -65,23 +61,33 @@ export const useOperationStore = create<OperationStore>()(
     (set, get) => ({
       sessions: [],
       activeSessionId: null,
-      deletedOperation: null,
+      matrix: [],
 
       initializeStore: () => {
         const { sessions } = get()
-        if (sessions.length === 0) {
-          const defaultSession = createNewSession("Gestión 1")
-          set({ sessions: [defaultSession], activeSessionId: defaultSession.id })
-        } else if (!get().activeSessionId && sessions.length > 0) {
-          set({ activeSessionId: sessions[0].id })
-        }
+
+        set(state => {
+          const session = sessions.find(s => s.id === state.activeSessionId)
+          if (session) {
+            if (state.matrix.length) return state
+            const matrix = calculateMatris(session.config)
+            return { matrix }
+          }
+
+          const matrix = calculateMatris(DEFAULT_CONFIG)
+          const newSession = createNewSession('Gestion 1', matrix)
+
+          return { sessions: [...state.sessions, newSession], matrix, activeSessionId: newSession.id}
+        })
       },
 
       createSession: (name) => {
-        const newSession = createNewSession(name)
+        const newMatrix = calculateMatris(DEFAULT_CONFIG)
+        const newSession = createNewSession(name, newMatrix)
         set((state) => ({
           sessions: [...state.sessions, newSession],
           activeSessionId: newSession.id,
+          matrix: newMatrix
         }))
       },
 
@@ -109,137 +115,112 @@ export const useOperationStore = create<OperationStore>()(
           const session = state.sessions.find((s) => s.id === state.activeSessionId)
           if (!session) return state
 
-          const newTrade = createDefaultOperation(session.config)
           return {
             sessions: state.sessions.map((s) =>
-              s.id === state.activeSessionId ? { ...s, trades: [newTrade], cycleStatus: "active" as CycleStatus } : s,
-            ),
+              s.id === state.activeSessionId ? { ...s, operations: [createDefaultOperation(session.config, state.matrix)], cycleStatus: 'active' } : s
+            )
           }
         })
       },
 
       updateConfig: (config) => {
-        set((state) => ({
-          sessions: state.sessions.map((s) => (s.id === state.activeSessionId ? { ...s, config } : s)),
-        }))
-      },
-
-      markOperation: (operationId, result) => {
-        console.log("markOperation", operationId, result)
         set((state) => {
           const session = state.sessions.find((s) => s.id === state.activeSessionId)
           if (!session) return state
+          const { operations } = session
+          const matrix = calculateMatris(config)
 
-          const { config, operations } = session
-          console.log({config, operations})
-
-          const updatedTrades = operations.map((trade) => {
-            if (trade.id === operationId) {
-              let retorno = 0
-              let newSaldo = trade.balance
-
-              if (result === "W") {
-                retorno = trade.amount * (config.brokerPayour / 100)
-                newSaldo = trade.balance + retorno
-              } else {
-                retorno = -trade.amount
-                newSaldo = trade.balance - trade.amount
-              }
-
-              const completedTrades = operations.slice(0, trade.index)
-              const wins = completedTrades.filter((t) => t.result === "W").length + (result === "W" ? 1 : 0)
-              const itmPercent = (wins / trade.index) * 100
-
-              return {
-                ...trade,
-                result,
-                retorno: Math.round(retorno * 100) / 100,
-                saldo: Math.round(newSaldo * 100) / 100,
-                itmPercent: Math.round(itmPercent * 100) / 100,
-                fallosPendientes: result === "W" ? "won" : "remaining",
-              }
-            }
-            return trade
+          const updatedOperations = getUpdatedOperations({
+            operations,
+            matrix,
+            config
           })
-
-          // Recalculate subsequent operations
-          for (let i = 0; i < updatedTrades.length; i++) {
-            if (updatedTrades[i].id > operationId && updatedTrades[i].result) {
-              const prevTrade = updatedTrades[i - 1]
-              updatedTrades[i].balance = prevTrade.balance
-
-              if (updatedTrades[i].result === "W") {
-                updatedTrades[i].profit = updatedTrades[i].amount * (config.brokerPayour / 100)
-                updatedTrades[i].balance += updatedTrades[i].profit
-              } else {
-                updatedTrades[i].profit = -updatedTrades[i].amount
-                updatedTrades[i].balance -= updatedTrades[i].amount
-              }
-              updatedTrades[i].balance = Math.round(updatedTrades[i].balance * 100) / 100
-            }
-          }
-
-          const completedTradesCount = updatedTrades.filter((t) => t.result !== null).length
-          const winsCount = updatedTrades.filter((t) => t.result === "W").length
-          const lossesCount = updatedTrades.filter((t) => t.result === "L").length
-          const maxLosses = config.allOperations - config.expectedITMs
-
-          let cycleStatus: CycleStatus = "active"
-          let shouldAddNewTrade = true
-
-          // Check if cycle is complete
-          if (!config.progressiveMode) {
-            // Non-progressive mode: limit is allOperations
-            if (completedTradesCount >= config.allOperations) {
-              cycleStatus = winsCount >= config.expectedITMs ? "won" : "lost"
-              shouldAddNewTrade = false
-            } else if (lossesCount > maxLosses) {
-              // Already exceeded max losses
-              cycleStatus = "lost"
-              shouldAddNewTrade = false
-            } else if (winsCount >= config.expectedITMs) {
-              // Already achieved ITM goal
-              cycleStatus = "won"
-              shouldAddNewTrade = false
-            }
-          }
-
-          // Generate new trade if cycle is still active
-          let finalTrades = updatedTrades
-          if (shouldAddNewTrade) {
-            const lastTrade = updatedTrades[updatedTrades.length - 1]
-            const currentBalance = lastTrade.balance
-
-            let consecutiveLosses = 0
-            for (let i = updatedTrades.length - 1; i >= 0; i--) {
-              if (updatedTrades[i].result === "L") consecutiveLosses++
-              else if (updatedTrades[i].result === "W") break
-            }
-
-            const baseInversion = currentBalance * 0.1
-            const multiplier = Math.pow(2, consecutiveLosses)
-            let amount = Math.min(baseInversion * multiplier, currentBalance)
-            amount = Math.round(amount * 100) / 100
-
-            const newOperation: Operation = {
-              id: crypto.randomUUID(),
-              index: operations.length + 1,
-              result: null,
-              amount,
-              profit: 0,
-              balance: Math.round(currentBalance * 100) / 100,
-              winRate: 0,
-              status: "",
-            }
-
-            finalTrades = [...updatedTrades, newOperation]
-          }
-
+          // console.log(updatedOperations)
+          
           return {
-            sessions: state.sessions.map((s) =>
-              s.id === state.activeSessionId ? { ...s, operations: finalTrades, cycleStatus } : s,
-            ),
+            sessions: state.sessions.map((s) => (s.id === state.activeSessionId ? { ...s, config, operations: updatedOperations } : s)),
+            matrix
           }
+        })
+      },
+
+      markOperation: (operationId, result) => {
+        set((state) => {
+          const session = state.sessions.find((s) => s.id === state.activeSessionId)
+          if (!session) return state
+          const { config, operations } = session
+          const operation = operations.find(o => o.id === operationId)
+          if (!operation) return state
+          const { matrix } = state
+          const profitPercent = matrix[0][0] - 1
+
+          let winnins = 0, losses = 0, cycleCount = 0, amountToRisk = config.totalRisk
+          for (let i=0; i<operations.length; i++) {
+            const op = operations[i]
+            if (op.result === 'W') winnins++
+            else if (op.result === 'L') losses++
+
+            if (config.progressiveMode && winnins >= config.expectedITMs || losses >= config.allOperations - config.expectedITMs) {
+              cycleCount++
+              winnins = 0
+              losses = 0
+              amountToRisk = (1 + profitPercent * (config.reinvestmentPercent / 100)) ** cycleCount * config.totalRisk
+            } else amountToRisk += operation.profit
+          }
+
+          const profitMultiplier = config.brokerPayout / 100 + 1
+          let balance = operation.balance, profit = operation.profit
+          const amount = calculateAmount(winnins, losses, matrix, profitMultiplier, amountToRisk, config.expectedITMs)
+
+          if (result === 'W') {
+            profit = amount * (profitMultiplier - 1)
+            winnins++
+          }
+          else if (result === 'L') {
+            profit = -amount
+            losses++
+          }
+          balance += profit
+          amountToRisk += profit
+
+          const winRate = winnins || losses ? (winnins / (winnins + losses)) * 100 : 0
+          const updatedOperation = {
+            ...operation,
+            amount,
+            balance,
+            winRate,
+            result,
+            profit,
+            status: getOperationStatus({
+              config,
+              losses,
+              operationResult: result,
+              winnins,
+              cycleCount
+            })
+          }
+          const updatedOperations = session.operations.slice()
+          updatedOperations.splice(-1, 1, updatedOperation)
+
+          const newAmount = calculateAmount(winnins, losses, matrix, profitMultiplier, amountToRisk, session.config.expectedITMs)
+          let cycleStatus: CycleStatus = 'active'
+
+          if (winnins >= config.expectedITMs && !config.progressiveMode) {
+            cycleStatus = 'won'
+          } else if (losses >= config.allOperations - config.expectedITMs && !config.progressiveMode) cycleStatus = 'lost'
+          else {
+            updatedOperations.push({
+              id: crypto.randomUUID(),
+              result: null,
+              amount: newAmount,
+              balance: 0,
+              profit: 0,
+              winRate: 0,
+              status: 'Seleciona el resultado.'
+            })
+          }
+
+          return { sessions: state.sessions.map((s) => (s.id === state.activeSessionId ? { ...s, operations: updatedOperations, cycleStatus } : s)) }
         })
       },
 
@@ -247,191 +228,183 @@ export const useOperationStore = create<OperationStore>()(
         set((state) => {
           const session = state.sessions.find((s) => s.id === state.activeSessionId)
           if (!session) return state
-
           const { config, operations } = session
-          const initialBalance = config.totalRisk
-          let tradeIndex = 0
+          let operationIndex = 0
+          const operation = operations.find((o, i) => {
+            if (o.id === operationId) operationIndex = i
+            return o.id === operationId
+          })
+          if (!operation) return state
+          const { matrix } = state
+          const profitPercent = matrix[0][0] - 1
 
-          const updatedTrades = operations.map((trade) => {
-            if (trade.id === operationId) {
-              tradeIndex = trade.index
-              const prevTrade = operations[trade.index - 2]
-              const prevSaldo = prevTrade ? prevTrade.balance : initialBalance
+          let winnins = 0, losses = 0, cycleCount = 0, amountToRisk = config.totalRisk
+          for (let i=0; i<=operationIndex; i++) {
+            const op = operations[i]
+            if (op.result === 'W') winnins++
+            else if (op.result === 'L') losses++
 
-              let retorno = 0
-              if (newResult === "W") {
-                retorno = trade.amount * (config.brokerPayour / 100)
-              } else {
-                retorno = -trade.amount
-              }
+            if (config.progressiveMode && winnins >= config.expectedITMs || losses >= config.allOperations - config.expectedITMs) {
+              cycleCount++
+              winnins = 0
+              losses = 0
+              amountToRisk = (1 + profitPercent * (config.reinvestmentPercent / 100)) ** cycleCount * config.totalRisk
+            } else amountToRisk += operation.profit
+          }
 
-              const newSaldo = prevSaldo + retorno
-              const completedTrades = operations.slice(0, trade.index)
-              const wins =
-                completedTrades.filter((t) => t.result === "W").length +
-                (newResult === "W" ? 1 : 0) -
-                (trade.result === "W" ? 1 : 0)
-              const itmPercent = Math.round((wins / trade.index) * 100)
+          const profitMultiplier = config.brokerPayout / 100 + 1
+          let balance = operation.balance, profit = operation.profit
 
-              return {
-                ...trade,
-                result: newResult,
-                retorno: Math.round(retorno * 100) / 100,
-                saldo: Math.round(newSaldo * 100) / 100,
-                itmPercent,
-                fallosPendientes: newResult === "W" ? "won" : "remaining",
-              }
-            }
-            return trade
+          if (newResult === 'W') {
+            profit = operation.amount * (profitMultiplier - 1)
+            winnins++
+            losses--
+          }
+          else if (newResult === 'L') {
+            profit = -operation.amount
+            losses++
+            winnins--
+          }
+          balance += profit
+
+          console.log('update op',{winnins, losses})
+          const winRate = winnins || losses ? (winnins / (winnins + losses)) * 100 : 0
+          const updatedOperation = {
+            ...operation,
+            balance,
+            winRate,
+            result: newResult,
+            profit,
+            status: getOperationStatus({
+              config,
+              losses,
+              winnins,
+              operationResult: newResult,
+              cycleCount
+            })
+          }
+          console.log(updatedOperation)
+          let updatedOperations = session.operations.slice()
+          updatedOperations.splice(operationIndex, 1, updatedOperation)
+          updatedOperations = getUpdatedOperations({
+            operations: updatedOperations,
+            matrix,
+            config,
+            fromIndex: operationIndex+1
           })
 
-          // Recalculate subsequent operations
-          for (let i = 0; i < updatedTrades.length; i++) {
-            if (updatedTrades[i].index > tradeIndex && updatedTrades[i].result) {
-              const prevTrade = updatedTrades[i - 1]
-              updatedTrades[i].balance = prevTrade.balance
-
-              if (updatedTrades[i].result === "W") {
-                updatedTrades[i].profit = updatedTrades[i].amount * (config.brokerPayour / 100)
-                updatedTrades[i].balance += updatedTrades[i].profit
-              } else {
-                updatedTrades[i].profit = -updatedTrades[i].amount
-                updatedTrades[i].balance -= updatedTrades[i].amount
-              }
-              updatedTrades[i].balance = Math.round(updatedTrades[i].balance * 100) / 100
-
-              const completedTradesUpToHere = updatedTrades.slice(0, i + 1)
-              const winsUpToHere = completedTradesUpToHere.filter((t) => t.result === "W").length
-              updatedTrades[i].winRate = Math.round((winsUpToHere / (i + 1)) * 100)
-            }
+          let allWinnins = 0, allLosses = 0
+          for (let i=0; i<updatedOperations.length; i++) {
+            const op = updatedOperations[i]
+            if (op.result === 'W') allWinnins++
+            else if (op.result === 'L') allLosses++
           }
 
-          return {
-            sessions: state.sessions.map((s) => (s.id === state.activeSessionId ? { ...s, operations: updatedTrades } : s)),
-          }
+          console.log({winnins, losses, allWinnins, allLosses, updatedOperations})
+          let cycleStatus: CycleStatus = 'active'
+
+          if (allWinnins >= config.expectedITMs && !config.progressiveMode) {
+            cycleStatus = 'won'
+          } else if (allLosses >= config.allOperations - config.expectedITMs && !config.progressiveMode) cycleStatus = 'lost'
+
+          return { sessions: state.sessions.map((s) => (s.id === state.activeSessionId ? { ...s, operations: updatedOperations, cycleStatus } : s)) }
         })
       },
 
-      deleteOperation: (tradeId) => {
+      deleteOperation: (operationId) => {
         set((state) => {
           const session = state.sessions.find((s) => s.id === state.activeSessionId)
-          if (!session || session.operations.length <= 1) return state
+          if (!session) return state
+          const {config, operations} = session
+          let operationIndex = 0
 
-          const { operations, config } = session
-          const initialBalance = config.totalRisk
-
-          const tradeIndex = operations.findIndex((t) => t.id === tradeId)
-          const deletedTrade = operations[tradeIndex]
-
-          const filteredTrades = operations.filter((t) => t.id !== tradeId)
-
-          const recalculatedTrades = filteredTrades.map((trade, index) => {
-            const newIndex = index + 1
-            const prevTrade = index > 0 ? filteredTrades[index - 1] : null
-            const prevSaldo = prevTrade ? prevTrade.balance : initialBalance
-
-            let newSaldo = prevSaldo
-            if (trade.result === "W") {
-              newSaldo = prevSaldo + trade.amount * (config.brokerPayour / 100)
-            } else if (trade.result === "L") {
-              newSaldo = prevSaldo - trade.amount
-            }
-
-            const completedTrades = filteredTrades.slice(0, index + 1).filter((t) => t.result !== null)
-            const wins = completedTrades.filter((t) => t.result === "W").length
-            const totalCompleted = completedTrades.length
-            const itmPercent = totalCompleted > 0 ? Math.round((wins / totalCompleted) * 100) : 0
-
-            return {
-              ...trade,
-              index: newIndex,
-              balance: trade.result ? Math.round(newSaldo * 100) / 100 : prevSaldo,
-              winRate: trade.result ? itmPercent : 0,
-            }
+          const operation = operations.find((o, i) => {
+            if (o.id === operationId) operationIndex = i
+            return o.id === operationId
           })
+          if (!operation) return state
+          const { matrix } = state
 
-          const lastTrade = recalculatedTrades[recalculatedTrades.length - 1]
-          let finalTrades = recalculatedTrades
+          let updatedOperations = operations.slice()
+          updatedOperations.splice(operationIndex, 1)
+          const profitMultiplier = config.brokerPayout / 100 + 1
+          
+          // let balance = config.totalRisk
+          updatedOperations = getUpdatedOperations({
+            operations: updatedOperations,
+            matrix,
+            config,
+            fromIndex: operationIndex
+          })
+          
+          const lastOperation = updatedOperations.at(-1)
+          if (lastOperation && lastOperation.result !== null) {
+            let winnins = 0, losses = 0
+            for (let i=0; i<=updatedOperations.length-1; i++) {
+              const operation = updatedOperations[i]
 
-          if (lastTrade && lastTrade.result !== null) {
-            let consecutiveLosses = 0
-            for (let i = recalculatedTrades.length - 1; i >= 0; i--) {
-              if (recalculatedTrades[i].result === "L") consecutiveLosses++
-              else if (recalculatedTrades[i].result === "W") break
+              if (operation.result === 'W') winnins++
+              else if (operation.result === 'L') losses++
             }
 
-            const currentBalance = lastTrade.balance
-            const baseInversion = currentBalance * 0.1
-            const multiplier = Math.pow(2, consecutiveLosses)
-            let amount = Math.min(baseInversion * multiplier, currentBalance)
-            amount = Math.round(amount * 100) / 100
-
-            const newOperation: Operation = {
+            updatedOperations.push({
               id: crypto.randomUUID(),
-              index: recalculatedTrades.length + 1,
               result: null,
-              amount,
+              amount: calculateAmount(winnins, losses, matrix, profitMultiplier, lastOperation.balance, config.expectedITMs),
+              balance: lastOperation.balance,
               profit: 0,
-              balance: Math.round(currentBalance * 100) / 100,
               winRate: 0,
-              status: "",
-            }
-
-            finalTrades = [...recalculatedTrades, newOperation]
+              status: 'Seleciona el resultado.'
+            })
           }
 
           return {
-            sessions: state.sessions.map((s) =>
-              s.id === state.activeSessionId ? { ...s, trades: finalTrades, cycleStatus: "active" as CycleStatus } : s,
-            ),
-            deletedTrade: { trade: deletedTrade, index: tradeIndex },
+            sessions: state.sessions.map((s) => s.id === state.activeSessionId ? {
+              ...s, operations: updatedOperations,
+              cycleStatus: s.cycleStatus !== 'active' ? 'active' : s.cycleStatus 
+            } : s),
+            deletedOperation: { operation, index: operationIndex }
           }
         })
       },
 
       restoreOperation: () => {
-        set((state) => {
-          const { deletedOperation } = state
-          if (!deletedOperation) return state
-
+        set(state => {
           const session = state.sessions.find((s) => s.id === state.activeSessionId)
           if (!session) return state
+          const { config, operations } = session
+          const { deletedOperation } = state
+          if (!deletedOperation) return state
+          
+          const { matrix } = state
 
-          const { operations, config } = session
-          const initialBalance = config.totalRisk
-
-          const newTrades = [...operations]
-          newTrades.splice(deletedOperation.index, 0, deletedOperation.operation)
-
-          const updatedTrades = newTrades.map((trade, index) => {
-            const newIndex = index + 1
-            const prevTrade = index > 0 ? newTrades[index - 1] : null
-            const prevSaldo = prevTrade ? prevTrade.balance : initialBalance
-
-            let newSaldo = prevSaldo
-            if (trade.result === "W") {
-              newSaldo = prevSaldo + trade.amount * (config.brokerPayour / 100)
-            } else if (trade.result === "L") {
-              newSaldo = prevSaldo - trade.amount
-            }
-
-            const completedTrades = newTrades.slice(0, index + 1)
-            const wins = completedTrades.filter((t) => t.result === "W").length
-            const totalCompleted = completedTrades.length
-            const itmPercent = totalCompleted > 0 ? Math.round((wins / totalCompleted) * 100) : 0
-
-            return {
-              ...trade,
-              index: newIndex,
-              balance: trade.result ? Math.round(newSaldo * 100) / 100 : prevSaldo,
-              winRate: trade.result ? itmPercent : 0,
-            }
+          let updatedOperations = operations.slice()
+          updatedOperations.splice(deletedOperation.index, 0, deletedOperation.operation)
+          const profitMultiplier = config.brokerPayout / 100 + 1
+          
+          // let balance = config.totalRisk
+          updatedOperations = getUpdatedOperations({
+            operations: updatedOperations,
+            matrix,
+            config,
+            fromIndex: deletedOperation.index
           })
 
-          return {
-            sessions: state.sessions.map((s) => (s.id === state.activeSessionId ? { ...s, trades: updatedTrades } : s)),
-            deletedOperation: null,
+          let allWinnins = 0, allLosses = 0
+          for (let i=0; i<updatedOperations.length; i++) {
+            const op = updatedOperations[i]
+            if (op.result === 'W') allWinnins++
+            else if (op.result === 'L') allLosses++
           }
+
+          console.log({allWinnins, allLosses, updatedOperations})
+          let cycleStatus: CycleStatus = 'active'
+
+          if (allWinnins >= config.expectedITMs) {
+            cycleStatus = 'won'
+          } else if (allLosses >= config.allOperations - config.expectedITMs) cycleStatus = 'lost'
+
+          return { sessions: state.sessions.map((s) => (s.id === state.activeSessionId ? { ...s, operations: updatedOperations, cycleStatus } : s)) }
         })
       },
 
@@ -441,7 +414,7 @@ export const useOperationStore = create<OperationStore>()(
       },
     }),
     {
-      name: "trading-storage",
+      name: "masaniello-storage",
       partialize: (state) => ({
         sessions: state.sessions,
         activeSessionId: state.activeSessionId,

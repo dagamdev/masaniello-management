@@ -4,14 +4,19 @@ import { toast } from "sonner"
 import { useOperationStore } from "@/lib/store"
 import { Copy, Trash2 } from "lucide-react"
 import { translations } from "@/lib/translations"
+import { RefObject, useRef } from "react"
 
-export function OperationCard ({ operations, operation, lang }: { 
+export function OperationCard ({ operations, operation, lang, index, activeDeleteToastRef }: { 
   operations: Operation[]
   operation: Operation
   lang: Language
+  index: number
+  activeDeleteToastRef: RefObject<string | number | null>
 }) {
   const { deleteOperation, restoreOperation, getActiveSession, markOperation, updateOperationResult } = useOperationStore()
   const t = translations[lang]
+
+  // console.log(operation)
 
   const canDelete = (operation: Operation) => {
     const isLastTrade = operation.id === operations[operations.length - 1]?.id
@@ -31,22 +36,32 @@ export function OperationCard ({ operations, operation, lang }: {
   }
 
   const handleDelete = () => {
+    if (activeDeleteToastRef.current !== null) {
+      toast.dismiss(activeDeleteToastRef.current)
+    }
+
     deleteOperation(operation.id)
-    toast(t.operationDeleted, {
-      description: `#${operation.index}`,
+
+    const toastId = toast(t.operationDeleted, {
+      description: `#${index+1}`,
       action: {
         label: t.undo,
         onClick: () => {
           restoreOperation()
           toast.success(t.operationRestored)
+          activeDeleteToastRef.current = null
         },
       },
       duration: 5000,
+      onDismiss: () => {
+        activeDeleteToastRef.current = null
+      },
+      onAutoClose: () => {
+        activeDeleteToastRef.current = null
+      },
     })
-  }
 
-  const getStatusText = () => {
-    return 'Estado de la operacion...'
+    activeDeleteToastRef.current = toastId
   }
 
   const session = getActiveSession()
@@ -83,7 +98,7 @@ export function OperationCard ({ operations, operation, lang }: {
           className={`${baseClass} ${
             operation.result === "W"
               ? "bg-success text-white border-success"
-              : "bg-success/20 hover:bg-success text-success hover:text-white border-success cursor-pointer"
+              : "bg-success/20 text-success border-success " + (cycleStatus !== 'active' ? '' : 'hover:bg-success hover:text-white cursor-pointer')
           } disabled:opacity-50`}
         >
           W
@@ -94,7 +109,7 @@ export function OperationCard ({ operations, operation, lang }: {
           className={`${baseClass} ${
             operation.result === "L"
               ? "bg-destructive text-white border-destructive"
-              : "bg-destructive/20 hover:bg-destructive text-destructive hover:text-white border-destructive cursor-pointer"
+              : "bg-destructive/20 text-destructive border-destructive " + (cycleStatus !== 'active' ? '' : 'hover:bg-destructive hover:text-white cursor-pointer')
           } disabled:opacity-50`}
         >
           L
@@ -104,15 +119,15 @@ export function OperationCard ({ operations, operation, lang }: {
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b last:border-b-0 hover:bg-muted/30 transition-colors">
+    <div className={'flex items-center gap-3 px-4 py-3 border-b last:border-b-0 transition-colors ' + (cycleStatus !== 'active' ? '' : 'hover:bg-muted/30')}>
       {/* Número y botones W/L */}
-      <span className="text-base font-bold text-primary w-8">#{operation.index}</span>
+      <span className="text-base font-bold text-primary w-8">#{index + 1}</span>
       <WLButtons operation={operation} />
 
       {/* Inversión con copy */}
       <button
         onClick={() => copyInvestment(operation.amount)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-muted/50 hover:bg-muted transition-colors min-w-[90px]"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-muted/50 hover:bg-muted transition-colors min-w-[90px] cursor-pointer"
         title={t.copyInvestment}
       >
         <span className="font-mono text-sm font-medium">€{operation.amount.toFixed(2)}</span>
@@ -135,9 +150,9 @@ export function OperationCard ({ operations, operation, lang }: {
         </div>
         <div className="hidden md:flex items-center gap-1">
           <span className="text-muted-foreground">ITM:</span>
-          <span className="font-mono">{operation.result === null ? "-" : `${operation.winRate.toFixed(1)}%`}</span>
+          <span className="font-mono">{operation.result === null ? "-" : `${operation.winRate.toFixed(2)}%`}</span>
         </div>
-        <span className="text-muted-foreground text-xs hidden lg:inline italic">{getStatusText()}</span>
+        <span className="text-muted-foreground text-xs hidden lg:inline italic">{operation.status}</span>
       </div>
 
       {/* Botón eliminar */}
@@ -145,8 +160,8 @@ export function OperationCard ({ operations, operation, lang }: {
         onClick={() => handleDelete()}
         variant="ghost"
         size="icon"
-        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-        disabled={!canDelete(operation)}
+        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
+        disabled={cycleStatus !== "active" || !canDelete(operation)}
       >
         <Trash2 className="h-4 w-4" />
       </Button>

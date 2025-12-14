@@ -1,13 +1,12 @@
 export type Language = "es" | "en"
 
-export type TradeResult = "W" | "L" | null
+export type OperationResult = "W" | "L" | null
 
 export type CycleStatus = "active" | "won" | "lost"
 
 export interface Operation {
   id: string
-  index: number
-  result: TradeResult
+  result: OperationResult
   amount: number
   profit: number
   balance: number
@@ -19,7 +18,7 @@ export interface Config {
   totalRisk: number
   allOperations: number
   expectedITMs: number
-  brokerPayour: number
+  brokerPayout: number
   progressiveMode: boolean
   reinvestmentPercent: number
 }

@@ -11,16 +11,16 @@ interface ObjectivePanelProps {
 }
 
 export function ObjectivePanel({ lang }: ObjectivePanelProps) {
-  const { getActiveSession } = useOperationStore()
+  const { getActiveSession, matrix } = useOperationStore()
   const t = translations[lang]
 
   const session = getActiveSession()
   const config = session?.config || DEFAULT_CONFIG
 
-  const winRate = config.allOperations > 0 ? ((config.expectedITMs / config.allOperations) * 100).toFixed(2) : "0.00"
-  const saldoFinalObjetivo = config.totalRisk + config.totalRisk * (config.brokerPayour / 100)
-  const gananciaNeta = config.totalRisk * (config.brokerPayour / 100)
-  const rendimiento = saldoFinalObjetivo > 0 ? ((gananciaNeta / saldoFinalObjetivo) * 100).toFixed(2) : "0.00"
+  const winRate = config.allOperations > 0 ? ((config.expectedITMs / config.allOperations) * 100).toFixed(2) : "0"
+  const profitPercent = matrix.length ?( matrix[0][0] - 1) * 100 : 0
+  const profit = config.totalRisk * (profitPercent / 100)
+  const saldoFinalObjetivo = config.totalRisk + profit
 
   return (
     <Card className="overflow-hidden pt-0">
@@ -30,19 +30,19 @@ export function ObjectivePanel({ lang }: ObjectivePanelProps) {
       <div className="p-1.5 sm:p-2 space-y-0.5 sm:space-y-1">
         <div className="flex justify-between items-center">
           <span className="font-medium text-muted-foreground text-[10px] sm:text-xs">{t.expectedWinRate}</span>
-          <span className="text-xs sm:text-sm font-mono font-bold text-primary">{winRate}%</span>
+          <span className="text-xs sm:text-sm font-mono font-bold text-primary">{+winRate}%</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="font-medium text-muted-foreground text-[10px] sm:text-xs">{t.finalBalance}</span>
-          <span className="text-xs sm:text-sm font-mono font-bold">€{saldoFinalObjetivo.toFixed(2)}</span>
+          <span className="text-xs font-mono font-bold">${+saldoFinalObjetivo.toFixed(2)}</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="font-medium text-muted-foreground text-[10px] sm:text-xs">{t.performance}</span>
-          <span className="text-xs sm:text-sm font-mono font-bold text-success">{rendimiento}%</span>
+          <span className="text-xs sm:text-sm font-mono font-bold text-success">{+profitPercent.toFixed(2)}%</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="font-medium text-muted-foreground text-[10px] sm:text-xs">{t.netProfit}</span>
-          <span className="text-xs sm:text-sm font-mono font-bold text-success">€{gananciaNeta.toFixed(2)}</span>
+          <span className="text-xs sm:text-sm font-mono font-bold text-success">€{profit.toFixed(2)}</span>
         </div>
       </div>
     </Card>

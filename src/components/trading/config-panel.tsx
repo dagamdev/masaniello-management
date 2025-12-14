@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { useOperationStore } from "@/lib/store"
 import { translations } from "@/lib/translations"
 import type { Config, Language } from "@/types"
+import { DEFAULT_CONFIG } from "@/utils/constants"
 
 interface ConfigPanelProps {
   lang: Language
@@ -17,14 +18,7 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
 
   const session = getActiveSession()
 
-  const config: Config = {
-    totalRisk: session?.config?.totalRisk ?? 100,
-    allOperations: session?.config?.allOperations ?? 10,
-    expectedITMs: session?.config?.expectedITMs ?? 4,
-    brokerPayour: session?.config?.brokerPayour ?? 85,
-    progressiveMode: session?.config?.progressiveMode ?? false,
-    reinvestmentPercent: session?.config?.reinvestmentPercent ?? 50,
-  }
+  const config: Config = session?.config || DEFAULT_CONFIG
 
   return (
     <Card className="overflow-hidden pt-0">
@@ -55,8 +49,8 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
           <Input
             type="number"
             step="1"
-            value={config.brokerPayour}
-            onChange={(e) => updateConfig({ ...config, brokerPayour: Number(e.target.value) })}
+            value={config.brokerPayout}
+            onChange={(e) => updateConfig({ ...config, brokerPayout: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
           />
         </div>
@@ -75,6 +69,7 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
             checked={config.progressiveMode}
             onCheckedChange={(checked) => updateConfig({ ...config, progressiveMode: checked })}
             className="scale-90 sm:scale-100"
+            disabled={(session?.operations.length || 1) > 1}
           />
         </div>
         {config.progressiveMode && (

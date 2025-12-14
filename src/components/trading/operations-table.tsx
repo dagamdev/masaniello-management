@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Trophy, XCircle, RefreshCw } from "lucide-react"
 import { useOperationStore } from "@/lib/store"
 import { translations } from "@/lib/translations"
-import type { Language, Operation } from "@/types"
-import { toast } from "sonner"
+import type { Language } from "@/types"
 import { OperationCard } from "./operation-card"
+import { useRef } from "react"
 
 interface OperationsTableProps {
   lang: Language
@@ -16,6 +16,7 @@ interface OperationsTableProps {
 export function OperationsTable({ lang }: OperationsTableProps) {
   const { getActiveSession, resetCycle } = useOperationStore()
   const t = translations[lang]
+  const activeDeleteToastRef = useRef<string | number | null>(null)
 
   const session = getActiveSession()
   const operations = session?.operations || []
@@ -27,7 +28,7 @@ export function OperationsTable({ lang }: OperationsTableProps) {
   const currentITMPercent =totalCompletedTrades > 0 ? ((winningTrades / totalCompletedTrades) * 100).toFixed(2) : "0.00"
 
   return (
-    <Card className="overflow-hidden py-0">
+    <Card className="overflow-hidden py-0 gap-0">
       <div className="bg-primary text-primary-foreground px-4 py-2 flex justify-between items-center">
         <h2 className="font-bold text-base sm:text-lg">{t.operations}</h2>
         <span className="text-sm sm:text-base font-mono">
@@ -52,7 +53,7 @@ export function OperationsTable({ lang }: OperationsTableProps) {
               </p>
             </div>
           </div>
-          <Button onClick={resetCycle} size="sm" className="h-8 text-sm gap-1.5 shrink-0">
+          <Button onClick={resetCycle} size="sm" className="h-8 text-sm gap-1.5 shrink-0 cursor-pointer">
             <RefreshCw className="h-4 w-4" />
             {t.newCycle}
           </Button>
@@ -61,8 +62,8 @@ export function OperationsTable({ lang }: OperationsTableProps) {
 
       {/* Lista de operaciones */}
       <div>
-        {operations.map((operation) => (
-          <OperationCard key={operation.id} operations={operations} operation={operation} lang={lang} />
+        {operations.map((operation, opi) => (
+          <OperationCard key={operation.id} operations={operations} operation={operation} lang={lang} index={opi} activeDeleteToastRef={activeDeleteToastRef} />
         ))}
       </div>
     </Card>
