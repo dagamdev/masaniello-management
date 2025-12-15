@@ -6,7 +6,6 @@ export default async function Page({
 }: {
   params: Promise<{ lang: string; sessionId: string }>
 }) {
-  console.log('hola1')
   const { lang, sessionId } = await params
   const validLang: Language = lang === "en" ? "en" : "es"
 

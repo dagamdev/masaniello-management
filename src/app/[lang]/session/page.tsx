@@ -5,8 +5,6 @@ import { useRouter, useParams } from "next/navigation"
 import { useMasanielloStore } from "@/stores/masaniello-store"
 import type { Language } from "@/types"
 
-console.log('session')
-
 export default function SessionRedirect() {
   const params = useParams()
   const lang = params.lang as string
@@ -21,7 +19,6 @@ export default function SessionRedirect() {
   useEffect(() => {
     if (sessions.length > 0) {
       const targetId = activeSessionId || sessions[0].id
-      console.log(targetId)
       router.replace(`/${validLang}/session/${targetId}`)
     }
   }, [sessions, activeSessionId, validLang, router])
