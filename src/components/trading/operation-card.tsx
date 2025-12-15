@@ -74,14 +74,14 @@ export function OperationCard ({ operations, operation, lang, index, activeDelet
       return (
         <div className="flex gap-1">
           <button
-            onClick={() => markOperation(operation.id, "W")}
+            onClick={() => markOperation("W")}
             disabled={cycleStatus !== "active"}
             className={`${baseClass} bg-success/20 hover:bg-success text-success hover:text-white border-success disabled:opacity-50 cursor-pointer`}
           >
             W
           </button>
           <button
-            onClick={() => markOperation(operation.id, "L")}
+            onClick={() => markOperation("L")}
             disabled={cycleStatus !== "active"}
             className={`${baseClass} bg-destructive/20 hover:bg-destructive text-destructive hover:text-white border-destructive disabled:opacity-50 cursor-pointer`}
           >

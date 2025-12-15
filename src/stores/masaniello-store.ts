@@ -51,7 +51,7 @@ interface MasanielloStore {
   updateConfig: (config: Config) => void
 
   // Operation actions
-  markOperation: (operationId: string, result: "W" | "L") => void
+  markOperation: (result: "W" | "L") => void
   updateOperationResult: (operationId: string, result: "W" | "L") => void
   deleteOperation: (operationId: string) => void
   restoreOperation: () => void
@@ -157,11 +157,11 @@ export const useMasanielloStore = create<MasanielloStore>()(
 
           engine.recalculateFrom(0)
           
-          return updateSession(state, {...engine.getResult(), config})
+          return { ...updateSession(state, { ...engine.getResult(), config }), matrix }
         })
       },
 
-      markOperation: (operationId, result) => {
+      markOperation: (result) => {
         set((state) => {
           const session = state.getActiveSession()
           if (!session) return state
