@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { useOperationStore } from "@/lib/store"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 import type { Language } from "@/types"
 
 console.log('session')
@@ -12,7 +12,7 @@ export default function SessionRedirect() {
   const lang = params.lang as string
   const validLang: Language = lang === "en" ? "en" : "es"
   const router = useRouter()
-  const { sessions, activeSessionId, initializeStore } = useOperationStore()
+  const { sessions, activeSessionId, initializeStore } = useMasanielloStore()
 
   useEffect(() => {
     initializeStore()

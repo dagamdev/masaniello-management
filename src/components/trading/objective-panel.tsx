@@ -1,7 +1,7 @@
 "use client"
 
 import { Card } from "@/components/ui/card"
-import { useOperationStore } from "@/lib/store"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 import { translations } from "@/lib/translations"
 import type { Language } from "@/types"
 import { DEFAULT_CONFIG } from "@/utils/constants"
@@ -11,7 +11,7 @@ interface ObjectivePanelProps {
 }
 
 export function ObjectivePanel({ lang }: ObjectivePanelProps) {
-  const { getActiveSession, matrix } = useOperationStore()
+  const { getActiveSession, matrix } = useMasanielloStore()
   const t = translations[lang]
 
   const session = getActiveSession()

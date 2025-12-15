@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, XCircle, RefreshCw } from "lucide-react"
-import { useOperationStore } from "@/lib/store"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 import { translations } from "@/lib/translations"
 import type { Language } from "@/types"
 import { OperationCard } from "./operation-card"
@@ -14,7 +14,7 @@ interface OperationsTableProps {
 }
 
 export function OperationsTable({ lang }: OperationsTableProps) {
-  const { getActiveSession, resetCycle } = useOperationStore()
+  const { getActiveSession, resetCycle } = useMasanielloStore()
   const t = translations[lang]
   const activeDeleteToastRef = useRef<string | number | null>(null)
 

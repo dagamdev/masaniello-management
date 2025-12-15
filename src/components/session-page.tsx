@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useOperationStore } from "@/lib/store"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 import { Header } from "@/components/trading/header"
 import { SessionManager } from "@/components/trading/session-manager"
 import { ConfigPanel } from "@/components/trading/config-panel"
@@ -19,7 +19,7 @@ interface SessionPageProps {
 
 export function SessionPage({ lang, sessionId }: SessionPageProps) {
   const router = useRouter()
-  const { sessions, activeSessionId, setActiveSession, initializeStore } = useOperationStore()
+  const { sessions, activeSessionId, setActiveSession, initializeStore } = useMasanielloStore()
 
   useEffect(() => {
     initializeStore()

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Modal } from "@/components/ui/modal"
-import { useOperationStore } from "@/lib/store"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 import { translations } from "@/lib/translations"
 import type { Language, Session } from "@/types"
 
@@ -18,7 +18,7 @@ interface SessionManagerProps {
 
 export function SessionManager({ lang, sessionId }: SessionManagerProps) {
   const router = useRouter()
-  const { sessions, createSession, deleteSession, updateSessionName, setActiveSession } = useOperationStore()
+  const { sessions, createSession, deleteSession, updateSessionName, setActiveSession } = useMasanielloStore()
   const t = translations[lang]
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -37,7 +37,7 @@ export function SessionManager({ lang, sessionId }: SessionManagerProps) {
   const confirmCreateSession = () => {
     if (!newSessionName.trim()) return
     createSession(newSessionName.trim())
-    const newSession = useOperationStore.getState().sessions.at(-1)
+    const newSession = useMasanielloStore.getState().sessions.at(-1)
     if (newSession) {
       router.push(`/${lang}/session/${newSession.id}`)
     }
@@ -55,7 +55,7 @@ export function SessionManager({ lang, sessionId }: SessionManagerProps) {
     const wasActive = sessionToDelete.id === sessionId
     deleteSession(sessionToDelete.id)
     if (wasActive) {
-      const remainingSessions = useOperationStore.getState().sessions
+      const remainingSessions = useMasanielloStore.getState().sessions
       if (remainingSessions.length > 0) {
         router.push(`/${lang}/session/${remainingSessions[0].id}`)
       }

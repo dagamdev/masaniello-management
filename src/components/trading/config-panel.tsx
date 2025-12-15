@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { useOperationStore } from "@/lib/store"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 import { translations } from "@/lib/translations"
 import type { Config, Language } from "@/types"
 import { DEFAULT_CONFIG } from "@/utils/constants"
@@ -13,10 +13,11 @@ interface ConfigPanelProps {
 }
 
 export function ConfigPanel({ lang }: ConfigPanelProps) {
-  const { getActiveSession, updateConfig } = useOperationStore()
+  const { getActiveSession, updateConfig } = useMasanielloStore()
   const t = translations[lang]
 
   const session = getActiveSession()
+  const finishCycle = (session?.cycleStatus ?? 'active') !== 'active'
 
   const config: Config = session?.config || DEFAULT_CONFIG
 
@@ -33,6 +34,7 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
             value={config.totalRisk}
             onChange={(e) => updateConfig({ ...config, totalRisk: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
+            disabled={finishCycle}
           />
         </div>
         <div className="space-y-0.5">
@@ -42,6 +44,7 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
             value={config.allOperations}
             onChange={(e) => updateConfig({ ...config, allOperations: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
+            disabled={finishCycle}
           />
         </div>
         <div className="space-y-0.5">
@@ -52,6 +55,7 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
             value={config.brokerPayout}
             onChange={(e) => updateConfig({ ...config, brokerPayout: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
+            disabled={finishCycle}
           />
         </div>
         <div className="space-y-0.5">
@@ -61,6 +65,7 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
             value={config.expectedITMs}
             onChange={(e) => updateConfig({ ...config, expectedITMs: Number(e.target.value) })}
             className="text-right font-mono h-7 sm:h-8 text-xs sm:text-sm"
+            disabled={finishCycle}
           />
         </div>
         <div className="col-span-2 flex items-center justify-between border-t pt-1.5 sm:pt-2 mt-0.5 sm:mt-1">
@@ -68,7 +73,7 @@ export function ConfigPanel({ lang }: ConfigPanelProps) {
           <Switch
             checked={config.progressiveMode}
             onCheckedChange={(checked) => updateConfig({ ...config, progressiveMode: checked })}
-            className="scale-90 sm:scale-100"
+            className="scale-90 sm:scale-100 cursor-pointer"
             disabled={(session?.operations.length || 1) > 1}
           />
         </div>

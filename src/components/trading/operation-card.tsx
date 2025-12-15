@@ -1,7 +1,7 @@
 import { Language, Operation } from "@/types"
 import { Button } from "../ui/button"
 import { toast } from "sonner"
-import { useOperationStore } from "@/lib/store"
+import { useMasanielloStore } from "@/stores/masaniello-store"
 import { Copy, Trash2 } from "lucide-react"
 import { translations } from "@/lib/translations"
 import { RefObject, useRef } from "react"
@@ -13,7 +13,7 @@ export function OperationCard ({ operations, operation, lang, index, activeDelet
   index: number
   activeDeleteToastRef: RefObject<string | number | null>
 }) {
-  const { deleteOperation, restoreOperation, getActiveSession, markOperation, updateOperationResult } = useOperationStore()
+  const { deleteOperation, restoreOperation, getActiveSession, markOperation, updateOperationResult } = useMasanielloStore()
   const t = translations[lang]
 
   // console.log(operation)
@@ -152,7 +152,7 @@ export function OperationCard ({ operations, operation, lang, index, activeDelet
           <span className="text-muted-foreground">ITM:</span>
           <span className="font-mono">{operation.result === null ? "-" : `${operation.winRate.toFixed(2)}%`}</span>
         </div>
-        <span className="text-muted-foreground text-xs hidden lg:inline italic">{operation.status}</span>
+        <span className="text-muted-foreground text-xs italic">{operation.status}</span>
       </div>
 
       {/* Botón eliminar */}
