@@ -83,10 +83,8 @@ export const useMasanielloStore = create<MasanielloStore>()(
       matrix: [],
 
       initializeStore: () => {
-        const { sessions } = get()
-
         set(state => {
-          const session = sessions.find(s => s.id === state.activeSessionId)
+          const session = state.sessions.find(s => s.id === state.activeSessionId)
           if (session) {
             if (state.matrix.length) return state
             const matrix = calculateMatris(session.config)

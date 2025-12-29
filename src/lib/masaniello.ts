@@ -429,6 +429,11 @@ export class MasanielloEngine {
       result,
       profit,
       balance,
+      winRate: winnins || losses
+      ? (winnins /
+          (winnins + losses)) *
+        100
+      : 0,
       status: this.getOperationStatus({
         winnins,
         losses,

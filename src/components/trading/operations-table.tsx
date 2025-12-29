@@ -61,7 +61,7 @@ export function OperationsTable({ lang }: OperationsTableProps) {
       )}
 
       {/* Lista de operaciones */}
-      <div>
+      <div className='flex flex-col-reverse'>
         {operations.map((operation, opi) => (
           <OperationCard key={operation.id} operations={operations} operation={operation} lang={lang} index={opi} activeDeleteToastRef={activeDeleteToastRef} />
         ))}

@@ -22,6 +22,7 @@ export function SessionPage({ lang, sessionId }: SessionPageProps) {
   const { sessions, activeSessionId, setActiveSession, initializeStore } = useMasanielloStore()
 
   useEffect(() => {
+    console.log('Session page')
     initializeStore()
   }, [initializeStore])
 

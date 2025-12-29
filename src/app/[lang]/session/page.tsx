@@ -13,12 +13,14 @@ export default function SessionRedirect() {
   const { sessions, activeSessionId, initializeStore } = useMasanielloStore()
 
   useEffect(() => {
+    console.log('Hola')
     initializeStore()
   }, [initializeStore])
 
   useEffect(() => {
     if (sessions.length > 0) {
       const targetId = activeSessionId || sessions[0].id
+      console.log({targetId})
       router.replace(`/${validLang}/session/${targetId}`)
     }
   }, [sessions, activeSessionId, validLang, router])
