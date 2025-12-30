@@ -10,12 +10,7 @@ export default function SessionRedirect() {
   const lang = params.lang as string
   const validLang: Language = lang === "en" ? "en" : "es"
   const router = useRouter()
-  const { sessions, activeSessionId, initializeStore } = useMasanielloStore()
-
-  useEffect(() => {
-    console.log('Hola')
-    initializeStore()
-  }, [initializeStore])
+  const { sessions, activeSessionId } = useMasanielloStore()
 
   useEffect(() => {
     if (sessions.length > 0) {

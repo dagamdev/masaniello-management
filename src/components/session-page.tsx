@@ -19,23 +19,15 @@ interface SessionPageProps {
 
 export function SessionPage({ lang, sessionId }: SessionPageProps) {
   const router = useRouter()
-  const { sessions, activeSessionId, setActiveSession, initializeStore } = useMasanielloStore()
+  const { sessions, activeSessionId, ensureActiveSession } = useMasanielloStore()
 
   useEffect(() => {
-    console.log('Session page')
-    initializeStore()
-  }, [initializeStore])
+    const resolvedId = ensureActiveSession(sessionId)
 
-  useEffect(() => {
-    if (sessions.length > 0) {
-      const sessionExists = sessions.some((s) => s.id === sessionId)
-      if (sessionExists && activeSessionId !== sessionId) {
-        setActiveSession(sessionId)
-      } else if (!sessionExists && sessions.length > 0) {
-        router.replace(`/${lang}/session/${sessions[0].id}`)
-      }
+    if (resolvedId && resolvedId !== sessionId) {
+      router.replace(`/${lang}/session/${resolvedId}`)
     }
-  }, [sessionId, sessions, activeSessionId, setActiveSession, lang, router])
+  }, [sessionId, lang, router])
 
   const activeSession = sessions.find((s) => s.id === sessionId)
 
