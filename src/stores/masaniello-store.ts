@@ -1,44 +1,20 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { Session, Config, Operation, CycleStatus } from "@/types"
-import { DEFAULT_CONFIG } from "@/utils/constants"
-import { calculateAmount, calculateMatris, MasanielloEngine } from "@/lib/masaniello"
-
-const createDefaultOperation = (config: Config, matrix: number[][]): Operation => {
-  return {
-    id: crypto.randomUUID(),
-    result: null,
-    amount: calculateAmount(0, 0, matrix, config.brokerPayout / 100 + 1, config.totalRisk, config.expectedITMs),
-    profit: 0,
-    balance: config.totalRisk,
-    winRate: 0,
-    status: 'Seleciona el resultado.',
-  }
-}
-
-const createNewSession = (name: string, matrix: number[][]): Session => {
-  const config = { ...DEFAULT_CONFIG }
-
-  return {
-    id: crypto.randomUUID(),
-    name,
-    config,
-    operations: [createDefaultOperation(config, matrix)],
-    createdAt: Date.now(),
-    cycleStatus: "active",
-  }
-}
+import type { Session, Config, Operation } from "@/types"
+import { MasanielloEngine } from "@/lib/masaniello/engine"
+import { getMatrix } from "@/lib/masaniello/matrix"
+import { createDefaultOperation, createNewSession } from "@/lib/masaniello/factories"
+import { updateSession } from "./helpers/masaniello"
 
 export interface DeletedOperation {
   operation: Operation
   index: number
 }
 
-interface MasanielloStore {
+export interface MasanielloStore {
   sessions: Session[]
   activeSessionId: string | null
   deletedOperation?: DeletedOperation
-  matrix: number[][]
 
   // Session actions
   createSession: (name: string) => void
@@ -46,6 +22,7 @@ interface MasanielloStore {
   updateSessionName: (id: string, name: string) => void
   setActiveSession: (id: string) => void
   resetCycle: () => void
+  ensureActiveSession: (sessionId: string) => string | null
 
   // Config actions
   updateConfig: (config: Config) => void
@@ -61,50 +38,60 @@ interface MasanielloStore {
   initializeStore: () => void
 }
 
-function updateSession(
-  state: MasanielloStore,
-  data: Partial<Session>
-) {
-  return {
-    ...state,
-    sessions: state.sessions.map(s =>
-      s.id === state.activeSessionId
-        ? { ...s, ...data }
-        : s
-    )
-  }
-}
-
 export const useMasanielloStore = create<MasanielloStore>()(
   persist(
     (set, get) => ({
       sessions: [],
       activeSessionId: null,
-      matrix: [],
 
       initializeStore: () => {
-        set(state => {
-          const session = state.sessions.find(s => s.id === state.activeSessionId)
-          if (session) {
-            if (state.matrix.length) return state
-            const matrix = calculateMatris(session.config)
-            return { matrix }
-          }
+        const { sessions, activeSessionId } = get()
 
-          const matrix = calculateMatris(DEFAULT_CONFIG)
-          const newSession = createNewSession('Gestion 1', matrix)
+        // Ya está inicializado
+        if (sessions.length > 0 && activeSessionId) return
 
-          return { sessions: [...state.sessions, newSession], matrix, activeSessionId: newSession.id}
+        // No hay sesiones → crear la inicial
+        if (sessions.length === 0) {
+          const newSession = createNewSession("Gestión 1")
+
+          set({
+            sessions: [newSession],
+            activeSessionId: newSession.id
+          })
+          return
+        }
+
+        // Hay sesiones pero no activa
+        set({
+          activeSessionId: sessions[0].id
         })
       },
 
+      ensureActiveSession: (sessionId) => {
+        const { sessions, activeSessionId } = get()
+      
+        if (sessions.length === 0) return null
+      
+        const exists = sessions.some(s => s.id === sessionId)
+      
+        if (exists) {
+          if (activeSessionId !== sessionId) {
+            set({ activeSessionId: sessionId })
+          }
+          return sessionId
+        }
+      
+        const fallbackId = sessions[0].id
+        set({ activeSessionId: fallbackId })
+        return fallbackId
+      },
+
       createSession: (name) => {
-        const newMatrix = calculateMatris(DEFAULT_CONFIG)
-        const newSession = createNewSession(name, newMatrix)
+        const newSession = createNewSession(name)
+
         set((state) => ({
           sessions: [...state.sessions, newSession],
-          activeSessionId: newSession.id,
-          matrix: newMatrix
+          activeSessionId: newSession.id
         }))
       },
 
@@ -134,7 +121,7 @@ export const useMasanielloStore = create<MasanielloStore>()(
 
           return {
             sessions: state.sessions.map((s) =>
-              s.id === state.activeSessionId ? { ...s, operations: [createDefaultOperation(session.config, state.matrix)], cycleStatus: 'active' } : s
+              s.id === state.activeSessionId ? { ...s, operations: [createDefaultOperation(session.config)], cycleStatus: 'active' } : s
             )
           }
         })
@@ -145,17 +132,16 @@ export const useMasanielloStore = create<MasanielloStore>()(
           const session = state.sessions.find((s) => s.id === state.activeSessionId)
           if (!session) return state
           const { operations } = session
-          const matrix = calculateMatris(config)
 
           const engine = new MasanielloEngine({
             operations,
             config,
-            matrix
+            matrix: getMatrix(config)
           })
 
           engine.recalculateFrom(0)
           
-          return { ...updateSession(state, { ...engine.getResult(), config }), matrix }
+          return { ...updateSession(state, { ...engine.getResult(), config }) }
         })
       },
 
@@ -163,11 +149,12 @@ export const useMasanielloStore = create<MasanielloStore>()(
         set((state) => {
           const session = state.getActiveSession()
           if (!session) return state
+          const { config } = session
 
           const engine = new MasanielloEngine({
             operations: session.operations,
-            config: session.config,
-            matrix: state.matrix
+            config,
+            matrix: getMatrix(config)
           })
       
           engine.markOperation(result)
@@ -180,6 +167,7 @@ export const useMasanielloStore = create<MasanielloStore>()(
         set((state) => {
           const session = state.getActiveSession()
           if (!session) return state
+          const { config } = session
       
           const operationIndex = session.operations.findIndex(
             o => o.id === operationId
@@ -188,8 +176,8 @@ export const useMasanielloStore = create<MasanielloStore>()(
       
           const engine = new MasanielloEngine({
             operations: session.operations,
-            config: session.config,
-            matrix: state.matrix
+            config,
+            matrix: getMatrix(config)
           })
       
           engine.updateOperationResult(operationIndex, newResult)
@@ -203,11 +191,12 @@ export const useMasanielloStore = create<MasanielloStore>()(
         set((state) => {
           const session = state.getActiveSession()
           if (!session) return state
+          const { config } = session
 
           const engine = new MasanielloEngine({
             operations: session.operations,
-            config: session.config,
-            matrix: state.matrix
+            config,
+            matrix: getMatrix(config)
           })
 
           const deletedOperation = engine.deleteOperation(operationId)
@@ -221,11 +210,12 @@ export const useMasanielloStore = create<MasanielloStore>()(
           const session = state.getActiveSession()
           if (!session) return state
           if (!state.deletedOperation) return state
+          const { config } = session
 
           const engine = new MasanielloEngine({
             operations: session.operations,
-            config: session.config,
-            matrix: state.matrix
+            config,
+            matrix: getMatrix(config)
           })
 
           engine.restoreOperation(state.deletedOperation)

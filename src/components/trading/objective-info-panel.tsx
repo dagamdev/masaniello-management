@@ -5,17 +5,19 @@ import { useMasanielloStore } from "@/stores/masaniello-store"
 import { translations } from "@/lib/translations"
 import type { Config, Language } from "@/types"
 import { DEFAULT_CONFIG } from "@/utils/constants"
+import { getMatrix } from "@/lib/masaniello/matrix"
 
 interface ObjectiveInfoPanelProps {
   lang: Language
 }
 
 export function ObjectiveInfoPanel({ lang }: ObjectiveInfoPanelProps) {
-  const { getActiveSession, matrix } = useMasanielloStore()
+  const { getActiveSession } = useMasanielloStore()
   const t = translations[lang]
 
   const session = getActiveSession()
   const config: Config = session?.config || DEFAULT_CONFIG
+  const matrix = getMatrix(config)
 
   const winRate = config.allOperations > 0 ? ((config.expectedITMs / config.allOperations) * 100).toFixed(2) : "0"
   const profitPercent = matrix.length ?( matrix[0][0] - 1) * 100 : 0
