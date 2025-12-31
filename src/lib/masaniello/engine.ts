@@ -10,16 +10,6 @@ type CycleCursor = {
   offCycle: boolean
 }
 
-export function calculateAmount (winnins: number, losses: number, matris: number[][], profit: number, balance: number, expectedITMs: number, isLast = false) {
-  if (isLast) return balance
-
-  const valor1 = winnins + 1 >= expectedITMs ? 1 : matris[losses + winnins + 1][winnins + 1]
-  const valor2 = matris[losses + winnins + 1]?.[winnins]
-  if (typeof valor2 === 'undefined') return balance
-  
-  return (1 - profit * valor1 / (valor2 + (profit - 1) * valor1)) * balance
-}
-
 // export function getUpdatedOperations ({ operations, matrix, config, fromIndex = 0 }: {
 //   operations: Operation[]
 //   matrix: number[][]
@@ -134,6 +124,18 @@ export class MasanielloEngine {
     this.profitMultiplier = config.brokerPayout / 100 + 1
   }
 
+  // Indica si el cilo ha finalizado o no segun datos de winnins y losses
+  private isEndCycle({ winnins, losses }: {
+    winnins: number
+    losses: number
+  }): boolean {
+    return (
+      winnins >= this.config.expectedITMs ||
+      losses > this.config.allOperations - this.config.expectedITMs
+    )
+  }
+
+  // Calcula datos de los siclos devolviendo la cantidad de ciclos y winnins y losses del ultimo ciclo
   private buildCursor(untilIndex: number): CycleCursor {
     const profitPercent = this.matrix[0][0] - 1
   
@@ -176,6 +178,7 @@ export class MasanielloEngine {
     return cursor
   }
 
+  // Recalcula todas la operaciones a paretir de un indice
   recalculateFrom(fromIndex: number) {
     const cursor = this.buildCursor(fromIndex)
     const profitMultiplier = this.profitMultiplier
@@ -307,15 +310,15 @@ export class MasanielloEngine {
     if (offCycle && !progressiveMode) {
       return 'Fuera de ciclo'
     } else if (winnins >= expectedITMs) {
-      return `✅ Has ganado${progressiveMode ? ` el ciclo ${cycleCount}` : ''}`
+      return `✅ Has ganado${progressiveMode ? ` el ciclo ${cycleCount+1}` : ''}`
     } else if (losses > allOperations - expectedITMs) {
-      return `❌ Has perdido${progressiveMode ? ` el ciclo ${cycleCount}` : ''}`
+      return `❌ Has perdido${progressiveMode ? ` el ciclo ${cycleCount+1}` : ''}`
     }
   
     return operationResult === null ? 'Seleciona el resultado.' : `Te quedan ${remainingOTMs} OTM${remainingOTMs > 1 ? 's' : ''}.`
   }
 
-  private calculateAmount(
+  calculateAmount(
     winnins: number,
     losses: number,
     balance: number
@@ -325,16 +328,6 @@ export class MasanielloEngine {
     if (typeof valor2 === 'undefined') return balance
 
     return (1 - this.profitMultiplier * valor1 / (valor2 + (this.profitMultiplier - 1) * valor1)) * balance
-  }
-
-  private isEndCycle({ winnins, losses }: {
-    winnins: number
-    losses: number
-  }): boolean {
-    return (
-      winnins >= this.config.expectedITMs ||
-      losses > this.config.allOperations - this.config.expectedITMs
-    )
   }
 
   // tengo que agregar logica para el modo progresivo
@@ -364,15 +357,15 @@ export class MasanielloEngine {
     const lastIndex = this.operations.length - 1
     const op = this.operations[lastIndex]
 
-    const state = this.calculateCycleState(lastIndex)
+    const cursor = this.buildCursor(lastIndex)
 
     const profit =
       result === 'W'
         ? op.amount * (this.profitMultiplier - 1)
         : -op.amount
 
-    const winnins = result === 'W' ? state.winnins + 1 : state.winnins
-    const losses = result === 'L' ? state.losses + 1 : state.losses
+    const winnins = result === 'W' ? cursor.winnins + 1 : cursor.winnins
+    const losses = result === 'L' ? cursor.losses + 1 : cursor.losses
 
     const balance = op.balance + profit
 
@@ -390,7 +383,7 @@ export class MasanielloEngine {
         winnins,
         losses,
         operationResult: result,
-        cycleCount: state.cycleCount
+        cycleCount: cursor.cycleCount
       })
     }
 

@@ -1,15 +1,19 @@
 import type { Config, Operation, Session } from '@/types'
 import { getMatrix } from './matrix'
-import { calculateAmount } from './engine'
 import { DEFAULT_CONFIG } from '@/utils/constants'
+import { MasanielloEngine } from './engine'
 
 export function createDefaultOperation (config: Config): Operation {
-  const matrix = getMatrix(config)
+  const engine = new MasanielloEngine({
+    operations: [],
+    config,
+    matrix: getMatrix(config)
+  })
 
   return {
     id: crypto.randomUUID(),
     result: null,
-    amount: calculateAmount(0, 0, matrix, config.brokerPayout / 100 + 1, config.totalRisk, config.expectedITMs),
+    amount: engine.calculateAmount(0, 0, config.totalRisk),
     profit: 0,
     balance: config.totalRisk,
     winRate: 0,
