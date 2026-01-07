@@ -11,7 +11,10 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Masaniello Management",
-  description: "Capital management for binary options trading and betting"
+  description: "Capital management for binary options trading and betting",
+  other: {
+    "google-adsense-account": "ca-pub-7544389116802597",
+  }
 }
 
 export default function RootLayout({
@@ -21,7 +24,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <meta name="google-adsense-account" content="ca-pub-7544389116802597" />
       <body className={`font-sans`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
