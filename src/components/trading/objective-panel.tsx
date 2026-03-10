@@ -6,6 +6,8 @@ import { translations } from "@/lib/translations"
 import type { Language } from "@/types"
 import { DEFAULT_CONFIG } from "@/utils/constants"
 import { getMatrix } from "@/lib/masaniello/matrix"
+import { Copy } from "lucide-react"
+import { toast } from "sonner"
 
 interface ObjectivePanelProps {
   lang: Language
@@ -24,6 +26,11 @@ export function ObjectivePanel({ lang }: ObjectivePanelProps) {
   const profit = config.totalRisk * (profitPercent / 100)
   const saldoFinalObjetivo = config.totalRisk + profit
 
+  const copyToClipboard = (value: string) => {
+    navigator.clipboard.writeText(value)
+    toast.success(lang === 'es' ? 'Saldo copiado' : 'Balance copied')
+  }
+
   return (
     <Card className="overflow-hidden pt-0">
       <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-1 sm:py-1.5 font-bold text-center text-sm sm:text-lg">
@@ -36,7 +43,14 @@ export function ObjectivePanel({ lang }: ObjectivePanelProps) {
         </div>
         <div className="flex justify-between items-center">
           <span className="font-medium text-muted-foreground text-[10px] sm:text-xs">{t.finalBalance}</span>
-          <span className="text-xs font-mono font-bold">${+saldoFinalObjetivo.toFixed(2)}</span>
+          <button
+            onClick={() => copyToClipboard(saldoFinalObjetivo.toFixed(2))}
+            className="flex items-center gap-1 font-mono font-bold text-xs sm:text-sm hover:text-primary transition-colors group cursor-pointer"
+            title={lang === "es" ? "Copiar saldo" : "Copy balance"}
+          >
+            ${saldoFinalObjetivo.toFixed(2)}
+            <Copy className="h-3 w-3 transition-opacity" />
+          </button>
         </div>
         <div className="flex justify-between items-center">
           <span className="font-medium text-muted-foreground text-[10px] sm:text-xs">{t.performance}</span>
