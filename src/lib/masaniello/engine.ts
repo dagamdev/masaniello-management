@@ -10,99 +10,6 @@ type CycleCursor = {
   offCycle: boolean
 }
 
-// export function getUpdatedOperations ({ operations, matrix, config, fromIndex = 0 }: {
-//   operations: Operation[]
-//   matrix: number[][]
-//   config: Config
-//   fromIndex?: number
-// }): Operation[] {
-//   const { totalRisk, brokerPayout, expectedITMs, progressiveMode, reinvestmentPercent } = config
-//   let balance = totalRisk, offCycle = false, amountToRisk = totalRisk, cycleCount = 0
-//   const profitPercent = matrix[0][0] - 1
-//   let winnins = 0, losses = 0
-
-//   return operations.map((operation, opi) => {
-//     if (opi < fromIndex) {
-//       if (operation.result === 'W') {
-//         winnins++
-//       }
-//       else if (operation.result === 'L') {
-//         losses++
-//       }
-
-//       if (progressiveMode && winnins >= config.expectedITMs || losses >= config.allOperations - config.expectedITMs) {
-//         cycleCount++
-//         winnins = 0
-//         losses = 0
-//         amountToRisk = (1 + profitPercent * (reinvestmentPercent / 100)) ** cycleCount * totalRisk
-//       } else amountToRisk += operation.profit
-
-//       if (opi === fromIndex - 1) {
-//         balance = operation.balance
-//       }
-//       return operation
-//     }
-
-//     if (offCycle) return {
-//       ...operation,
-//       status: 'Fuera de ciclo.'
-//     }
-
-//     // console.log(matrix)
-//     const profitMultiplier = brokerPayout / 100 + 1
-//     let amount = calculateAmount(winnins, losses, matrix, profitMultiplier, amountToRisk, expectedITMs)
-//     // console.log('masaniello 96', {amount, winnins, losses, balance, amountToRisk, expectedITMs})
-//     let profit = operation.profit
-
-//     if (operation.result === 'W') {
-//       profit = amount * (profitMultiplier - 1)
-//       winnins++
-//     }
-//     else if (operation.result === 'L') {
-//       profit = -amount
-//       losses++
-//     }
-//     balance += profit
-//     amountToRisk += profit
-
-//     const winRate = winnins || losses ? (winnins / (winnins + losses)) * 100 : 0
-//     // console.log({amount, balance, profitMultiplier, winRate})
-//     const endCycle = winnins >= config.expectedITMs || losses >= config.allOperations - config.expectedITMs
-//     if (endCycle) cycleCount++
-
-//     const status = getOperationStatus({
-//       losses,
-//       winnins,
-//       operationResult: operation.result,
-//       config,
-//       offCycle,
-//       cycleCount
-//     })
-
-//     if (endCycle) {
-//       console.log('finish cycle', amount, winnins >= config.expectedITMs, losses >= config.allOperations - config.expectedITMs)
-      
-//       if (config.progressiveMode) {
-//         winnins = 0
-//         losses = 0
-//         amountToRisk = (1 + profitPercent * (reinvestmentPercent / 100)) ** cycleCount * totalRisk
-//       } else {
-
-//         offCycle = true
-//       }
-//     }
-
-//     return {
-//       ...operation,
-//       amount,
-//       balance,
-//       winRate,
-//       profit,
-//       status
-//     }
-//   })
-// }
-
 export class MasanielloEngine {
   private operations: Operation[]
   private config: Config
@@ -422,6 +329,11 @@ export class MasanielloEngine {
   restoreOperation(deletedOperation: DeletedOperation) {
     this.operations.splice(deletedOperation.index, 0, deletedOperation.operation)
     this.recalculateFrom(deletedOperation.index)
+  }
+
+  clearAll () {
+    this.operations = []
+    this.appendNextOperation(0, 0, this.config.totalRisk)
   }
 
   getResult() {

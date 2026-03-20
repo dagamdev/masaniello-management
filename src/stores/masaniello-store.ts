@@ -32,6 +32,7 @@ export interface MasanielloStore {
   updateOperationResult: (operationId: string, result: "W" | "L") => void
   deleteOperation: (operationId: string) => void
   restoreOperation: () => void
+  clearAllTrades: () => void
 
   // Helpers
   getActiveSession: () => Session | undefined
@@ -202,6 +203,24 @@ export const useMasanielloStore = create<MasanielloStore>()(
           const deletedOperation = engine.deleteOperation(operationId)
 
           return { ...updateSession(state, engine.getResult()), deletedOperation }
+        })
+      },
+
+      clearAllTrades() {
+        set((state) => {
+          const session = state.getActiveSession()
+          if (!session) return state
+          const { config } = session
+
+          const engine = new MasanielloEngine({
+            operations: session.operations,
+            config,
+            matrix: getMatrix(config)
+          })
+
+          engine.clearAll()
+
+          return { ...updateSession(state, engine.getResult()) }
         })
       },
 

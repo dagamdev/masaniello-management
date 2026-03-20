@@ -152,7 +152,7 @@ export function SessionManager({ lang, sessionId }: SessionManagerProps) {
       <Card className="overflow-hidden py-0">
         <div className="bg-primary text-primary-foreground px-3 py-1.5 flex justify-between items-center">
           <span className="font-bold text-lg">{t.sessions}</span>
-          <Button onClick={openCreateModal} size="sm" variant="secondary" className="h-7 px-2 gap-1">
+          <Button onClick={openCreateModal} size="sm" variant="secondary" className="h-7 px-2 gap-1 cursor-pointer">
             <Plus className="h-3.5 w-3.5" />
             {t.newSession}
           </Button>
