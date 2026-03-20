@@ -271,10 +271,10 @@ export class MasanielloEngine {
         ? op.amount * (this.profitMultiplier - 1)
         : -op.amount
 
-    const winnins = result === 'W' ? cursor.winnins + 1 : cursor.winnins
-    const losses = result === 'L' ? cursor.losses + 1 : cursor.losses
+    let winnins = result === 'W' ? cursor.winnins + 1 : cursor.winnins
+    let losses = result === 'L' ? cursor.losses + 1 : cursor.losses
 
-    const balance = op.balance + profit
+    let balance = op.balance + profit
 
     this.operations[lastIndex] = {
       ...op,
@@ -292,6 +292,26 @@ export class MasanielloEngine {
         operationResult: result,
         cycleCount: cursor.cycleCount
       })
+    }
+
+    if (this.config.progressiveMode) {
+      const endCycle = this.isEndCycle({
+        winnins,
+        losses
+      })
+
+      if (endCycle) {
+        cursor.cycleCount++
+
+        winnins = 0
+        losses = 0
+        balance =
+          this.config.totalRisk *
+          (1 +
+            (this.matrix[0][0] - 1) *
+              (this.config.reinvestmentPercent / 100)) **
+            cursor.cycleCount
+      }
     }
 
     this.appendNextOperation(winnins, losses, balance)

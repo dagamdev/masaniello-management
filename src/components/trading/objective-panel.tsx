@@ -27,6 +27,7 @@ export function ObjectivePanel({ lang }: ObjectivePanelProps) {
   const saldoFinalObjetivo = config.totalRisk + profit
 
   const copyToClipboard = (value: string) => {
+    console.log(value)
     navigator.clipboard.writeText(value)
     toast.success(lang === 'es' ? 'Saldo copiado' : 'Balance copied')
   }
